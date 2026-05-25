@@ -1,20 +1,61 @@
 import streamlit as st
 import pandas as pd
 
-# ✅ Page title
-st.title("🔥 Bismark Job Finder")
-st.write("Remote jobs filtered from the Remotive API — updated daily by your Airflow pipeline.")
+# ✅ PAGE CONFIG
+st.set_page_config(page_title="Job Intelligence App", layout="wide")
 
-# ✅ Load data
+# ✅ CUSTOM STYLING (PREMIUM LOOK)
+st.markdown("""
+<style>
+body {
+    background-color: #0f172a;
+    color: white;
+}
+h1, h2, h3, h4 {
+    color: #f8fafc;
+}
+.card {
+    background: #1e293b;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 15px;
+    border: 1px solid #334155;
+}
+.button {
+    text-decoration: none;
+    padding: 8px 14px;
+    background: #6366f1;
+    color: white;
+    border-radius: 6px;
+    font-size: 14px;
+}
+.metric-box {
+    background: #1e293b;
+    padding: 15px;
+    border-radius: 10px;
+    text-align: center;
+}
+input, select {
+    background-color: #1e293b !important;
+    color: white !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ✅ HEADER
+st.markdown("<h1 style='text-align:center;'>🚀 AI Job Intelligence Platform</h1>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color:#94a3b8;'>Discover, filter, and apply to jobs instantly</p>", unsafe_allow_html=True)
+
+# ✅ LOAD DATA
 df = pd.read_csv("filtered_jobs.csv")
 
-# ✅ CLASSIFY JOB CATEGORY
+# ✅ CLASSIFY
 def classify_job(title):
     title = title.lower()
     if "data" in title or "analyst" in title or "engineer" in title:
         return "Data / Tech"
     elif "customer" in title or "support" in title:
-        return "Customer Service"
+        return "Customer"
     elif "warehouse" in title:
         return "Warehouse"
     else:
@@ -22,67 +63,54 @@ def classify_job(title):
 
 df["Category"] = df["Title"].apply(classify_job)
 
-# ✅ JOB SCORING SYSTEM
+# ✅ SCORING
 def score_job(title):
     title = title.lower()
     score = 0
-
-    if "data" in title:
-        score += 3
-    if "engineer" in title:
-        score += 3
-    if "analyst" in title:
-        score += 2
-    if "senior" in title:
-        score += 1
-
+    if "data" in title: score += 3
+    if "engineer" in title: score += 3
+    if "analyst" in title: score += 2
+    if "senior" in title: score += 1
     return score
 
 df["Score"] = df["Title"].apply(score_job)
+df = df.sort_values(by="Score", ascending=False)
 
-# ✅ METRICS (top section)
+# ✅ KPI SECTION (NICE BOXES)
 col1, col2, col3 = st.columns(3)
 
-col1.metric("Total Jobs Found", len(df))
-col2.metric("Unique Companies", df["Company"].nunique())
-col3.metric("Categories", df["Category"].nunique())
+col1.markdown(f"<div class='metric-box'><h2>{len(df)}</h2><p>Jobs Found</p></div>", unsafe_allow_html=True)
+col2.markdown(f"<div class='metric-box'><h2>{df['Company'].nunique()}</h2><p>Companies</p></div>", unsafe_allow_html=True)
+col3.markdown(f"<div class='metric-box'><h2>{df['Category'].nunique()}</h2><p>Categories</p></div>", unsafe_allow_html=True)
 
-# ✅ SEARCH
-query = st.text_input("🔍 Search by job title", placeholder="e.g. data engineer, analyst...")
+st.markdown("---")
 
-if query:
-    df = df[df["Title"].str.contains(query, case=False)]
+# ✅ SIDEBAR FILTERS (PREMIUM UX)
+st.sidebar.header("🔍 Filters")
 
-# ✅ FILTER BY COMPANY
-company = st.selectbox("🏢 Filter by Company", ["All"] + sorted(df["Company"].unique()))
+search = st.sidebar.text_input("Search Job")
+category = st.sidebar.selectbox("Category", ["All"] + list(df["Category"].unique()))
+company = st.sidebar.selectbox("Company", ["All"] + sorted(df["Company"].unique()))
 
-if company != "All":
-    df = df[df["Company"] == company]
-
-# ✅ FILTER BY CATEGORY
-category = st.selectbox("📂 Filter by Category", ["All"] + list(df["Category"].unique()))
+# ✅ APPLY FILTERS
+if search:
+    df = df[df["Title"].str.contains(search, case=False)]
 
 if category != "All":
     df = df[df["Category"] == category]
 
-# ✅ SORTING
-sort_option = st.selectbox("↕ Sort by", ["Score (Best Match)", "Title A–Z"])
+if company != "All":
+    df = df[df["Company"] == company]
 
-if sort_option == "Score (Best Match)":
-    df = df.sort_values(by="Score", ascending=False)
-else:
-    df = df.sort_values(by="Title")
+st.markdown(f"### {len(df)} jobs available")
 
-st.write(f"### Showing {len(df)} job(s)")
-
-# ✅ DISPLAY JOBS
-for index, row in df.iterrows():
-    st.markdown(f"### {row['Title']}")
-    st.write(f"🏢 {row['Company']}")
-    st.write(f"📂 {row['Category']}")
-    st.write(f"⭐ Match Score: {row['Score']}")
-    
-    # ✅ Apply link (clickable)
-    st.markdown(f"[👉 Apply Now]({row['URL']})")
-
-    st.write("---")
+# ✅ DISPLAY JOBS (PREMIUM CARDS)
+for _, row in df.iterrows():
+    st.markdown(f"""
+    <div class='card'>
+        <h3>{row['Title']}</h3>
+        <p>🏢 {row['Company']}</p>
+        <p>📂 {row['Category']} | ⭐ Score: {row['Score']}</p>
+        <a class='button' href="{row['URL']}" target="_blank">Apply Now →</a>
+    </div>
+    """, unsafe_allow_html=True)
